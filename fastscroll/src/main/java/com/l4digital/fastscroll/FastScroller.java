@@ -25,6 +25,7 @@ import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.support.annotation.ColorInt;
 import android.support.annotation.IdRes;
+import android.support.annotation.IntRange;
 import android.support.annotation.NonNull;
 import android.support.constraint.ConstraintLayout;
 import android.support.constraint.ConstraintSet;
@@ -48,6 +49,12 @@ import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
+// TODO: more refactoring.
+// TODO: no non-final inline member initializations!
+// TODO: multiple listeners.
+// TODO: finish the indexer.
+// TODO: add annotations and final declarations where appropriate.
+// TODO: improve and correct the documentation.
 public final class FastScroller extends LinearLayout {
 
     public interface SectionIndexer {
@@ -63,6 +70,8 @@ public final class FastScroller extends LinearLayout {
 
     @ColorInt private int mBubbleColor;
     @ColorInt private int mHandleColor;
+
+    @IndexingMethod private int mIndexingMethod;
 
     private int mBubbleHeight;
     private int mHandleHeight;
@@ -327,6 +336,17 @@ public final class FastScroller extends LinearLayout {
         mFastScrollStateChangeListener = fastScrollStateChangeListener;
     }
 
+    /**
+     * <p>Set a new indexing method for calculating the position of the item to obtain the selection text from.</p>
+     *
+     * <p>Must be one of the indexing methods defined by the {@link IndexingMethod} Annotation interface.</p>
+     *
+     * @param method the id of the indexing method to use
+     */
+    public void setIndexingMethod(@IndexingMethod int method) {
+        mIndexingMethod = method;
+    }
+
     /** Start fast scrolling behavior and show related visual components. **/
     public void startFastScroll() {
         getHandler().removeCallbacks(mScrollbarHider);
@@ -409,32 +429,42 @@ public final class FastScroller extends LinearLayout {
 
     private void setRecyclerViewPosition(float y) {
         if (mRecyclerView != null && mRecyclerView.getAdapter() != null) {
-            int itemCount = mRecyclerView.getAdapter().getItemCount();
-            float proportion;
+            final int itemCount = mRecyclerView.getAdapter().getItemCount();
+            final float proportion = calculateProportion(y);
+            final int scrolledItemCount = calculateScrolledItemCount(itemCount, proportion);
+            final int targetPosition = getValueInRange(0, itemCount - 1, scrolledItemCount);
 
-            if (mHandleView.getY() == 0) {
-                proportion = 0f;
-            } else if (mHandleView.getY() + mHandleHeight >= mViewHeight - sTrackSnapRange) {
-                proportion = 1f;
-            } else {
-                proportion = y / (float) mViewHeight;
-            }
-
-            int scrolledItemCount;
-
-            if (isLayoutReversed(mRecyclerView.getLayoutManager())) {
-                scrolledItemCount = itemCount - Math.round(proportion * itemCount);
-            } else {
-                scrolledItemCount = Math.round(proportion * itemCount);
-            }
-
-            int targetPos = getValueInRange(0, itemCount - 1, scrolledItemCount);
-
-            mRecyclerView.getLayoutManager().scrollToPosition(targetPos);
+            mRecyclerView.getLayoutManager().scrollToPosition(targetPosition);
 
             if (mSectionIndexer != null) {
-                mBubbleView.setText(mSectionIndexer.getSectionText(targetPos));
+                final int indexPosition;
+                if (mIndexingMethod == IndexingMethod.FIRST_VISIBLE_ITEM) {
+                    indexPosition = obtainFirstVisibleItemPosition(mRecyclerView.getLayoutManager());
+                } else if (mIndexingMethod == IndexingMethod.LAST_VISIBLE_ITEM) {
+                    indexPosition = obtainLastVisibleItemPosition(mRecyclerView.getLayoutManager());
+                } else {
+                    indexPosition = targetPosition;
+                }
+                mBubbleView.setText(mSectionIndexer.getSectionText(indexPosition));
             }
+        }
+    }
+
+    private float calculateProportion(float y) {
+        if (mHandleView.getY() == 0) {
+            return 0f;
+        } else if (mHandleView.getY() + mHandleHeight >= mViewHeight - sTrackSnapRange) {
+            return 1f;
+        } else {
+            return y / (float) mViewHeight;
+        }
+    }
+
+    private int calculateScrolledItemCount(int totalItemCount, float proportion) {
+        if (isLayoutReversed(mRecyclerView.getLayoutManager())) {
+            return totalItemCount - Math.round(proportion * totalItemCount);
+        } else {
+            return Math.round(proportion * totalItemCount);
         }
     }
 
@@ -567,6 +597,67 @@ public final class FastScroller extends LinearLayout {
         }
     }
 
+    @IntRange(from = 0)
+    private int obtainFirstVisibleItemPosition(@NonNull final RecyclerView.LayoutManager layoutManager) {
+        if (layoutManager instanceof StaggeredGridLayoutManager) {
+            final int[] firstVisibleItemPositions = ((StaggeredGridLayoutManager) layoutManager).findFirstCompletelyVisibleItemPositions(null);
+            return determineVisibleStaggeredItemPosition(firstVisibleItemPositions, true);
+
+        } else if (layoutManager instanceof GridLayoutManager) {
+            return ((GridLayoutManager) layoutManager).findFirstCompletelyVisibleItemPosition();
+
+        } else if (layoutManager instanceof LinearLayoutManager) {
+            return ((LinearLayoutManager) layoutManager).findFirstCompletelyVisibleItemPosition();
+
+        } else {
+            throw new UnsupportedOperationException("The RecyclerView uses an unsupported LayoutManager. Currently only LinearLayoutManager, GridLayoutManager, " +
+                    "StaggeredGridLayoutManager or their custom variants are supported.");
+        }
+    }
+
+    @IntRange(from = 0)
+    private int obtainLastVisibleItemPosition(@NonNull final RecyclerView.LayoutManager layoutManager) {
+        if (layoutManager instanceof StaggeredGridLayoutManager) {
+            final int[] lastVisibleItemPositions = ((StaggeredGridLayoutManager) layoutManager).findLastCompletelyVisibleItemPositions(null);
+            return determineVisibleStaggeredItemPosition(lastVisibleItemPositions, false);
+
+        } else if (layoutManager instanceof GridLayoutManager) {
+            return ((GridLayoutManager) layoutManager).findLastCompletelyVisibleItemPosition();
+
+        } else if (layoutManager instanceof LinearLayoutManager) {
+            return ((LinearLayoutManager) layoutManager).findLastCompletelyVisibleItemPosition();
+
+        } else {
+            throw new UnsupportedOperationException("The RecyclerView uses an unsupported LayoutManager. Currently only LinearLayoutManager, GridLayoutManager, " +
+                    "StaggeredGridLayoutManager or their custom variants are supported.");
+        }
+    }
+
+    /**
+     * Determine (find) the position of the absolute first or last element across each span in the adapter.
+     *
+     * @param visibleItemPositions The positions of the visible items to look into
+     * @param shouldDetermineFirst True when looking for the absolute first element and false when looking for the dead last
+     * @return The position of the absolute first or last element
+     */
+    @IntRange(from = 0)
+    private int determineVisibleStaggeredItemPosition(@NonNull final int[] visibleItemPositions, final boolean shouldDetermineFirst) {
+        int resultingPosition = 0;
+        for (int i = 0; i < visibleItemPositions.length; i++) {
+            if (i == 0) {
+                // Starting with...
+                resultingPosition = visibleItemPositions[i];
+            } else if (shouldDetermineFirst && visibleItemPositions[i] > resultingPosition) {
+                // For first element...
+                resultingPosition = visibleItemPositions[i];
+            } else if (!shouldDetermineFirst && visibleItemPositions[i] < resultingPosition) {
+                // For last element...
+                resultingPosition = visibleItemPositions[i];
+            }
+        }
+        return resultingPosition;
+    }
+
     private void prepareLayout(Context context, AttributeSet attrs) {
         inflate(context, R.layout.fastscroller, this);
 
@@ -609,6 +700,8 @@ public final class FastScroller extends LinearLayout {
         setBubbleTextColor(textColor);
         setHideScrollbar(hideScrollbar);
         setTrackVisible(showTrack);
+
+        setIndexingMethod(IndexingMethod.FIRST_VISIBLE_ITEM);
     }
 
 }
