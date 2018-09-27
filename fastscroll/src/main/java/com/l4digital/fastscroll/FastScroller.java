@@ -338,6 +338,7 @@ public final class FastScroller extends LinearLayout {
 
     /**
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
      * <p>Set a new indexing method for calculating the position of the item to obtain the selection text from.</p>
      *
      * <p>Must be one of the indexing methods defined by the {@link IndexingMethod} Annotation interface.</p>
@@ -346,11 +347,16 @@ public final class FastScroller extends LinearLayout {
      */
     public void setIndexingMethod(@IndexingMethod int method) {
 =======
+=======
+>>>>>>> Stashed changes
      * TODO
      *
      * @param method
      */
     public void setIndexingMethod(int method) {
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         mIndexingMethod = method;
     }
@@ -440,6 +446,7 @@ public final class FastScroller extends LinearLayout {
             final int itemCount = mRecyclerView.getAdapter().getItemCount();
             final float proportion = calculateProportion(y);
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             final int scrolledItemCount = calculateScrolledItemCount(itemCount, proportion);
             final int targetPosition = getValueInRange(0, itemCount - 1, scrolledItemCount);
 
@@ -488,8 +495,28 @@ public final class FastScroller extends LinearLayout {
                 }
 
                 mRecyclerView.getLayoutManager().s(0, Math.round(verticalScrollRange * proportion));
-            }
+=======
+            final int scrolledItemCount = calculateScrolledItemCount(itemCount, proportion);
+            final int targetPosition = getValueInRange(0, itemCount - 1, scrolledItemCount);
 
+            mRecyclerView.getLayoutManager().scrollToPosition(targetPosition);
+
+            if (mSectionIndexer != null) {
+                final int indexPosition;
+                if (mIndexingMethod == IndexingMethod.FIRST_VISIBLE_ITEM) {
+                    indexPosition = obtainFirstVisibleItemPosition(mRecyclerView.getLayoutManager());
+                } else if (mIndexingMethod == IndexingMethod.LAST_VISIBLE_ITEM) {
+                    indexPosition = obtainLastVisibleItemPosition(mRecyclerView.getLayoutManager());
+                } else {
+                    indexPosition = targetPosition;
+                }
+                mBubbleView.setText(mSectionIndexer.getSectionText(indexPosition));
+>>>>>>> Stashed changes
+            }
+        }
+    }
+
+<<<<<<< Updated upstream
 >>>>>>> Stashed changes
 
     private int calculateScrolledItemCount(int totalItemCount, float proportion) {
@@ -510,6 +537,18 @@ public final class FastScroller extends LinearLayout {
         }
     }
 
+=======
+    private float calculateProportion(float y) {
+        if (mHandleView.getY() == 0) {
+            return 0f;
+        } else if (mHandleView.getY() + mHandleHeight >= mViewHeight - sTrackSnapRange) {
+            return 1f;
+        } else {
+            return y / (float) mViewHeight;
+        }
+    }
+
+>>>>>>> Stashed changes
     private int calculateScrolledItemCount(int totalItemCount, float proportion) {
         if (isLayoutReversed(mRecyclerView.getLayoutManager())) {
             return totalItemCount - Math.round(proportion * totalItemCount);
@@ -651,11 +690,16 @@ public final class FastScroller extends LinearLayout {
     private int obtainFirstVisibleItemPosition(@NonNull final RecyclerView.LayoutManager layoutManager) {
         if (layoutManager instanceof StaggeredGridLayoutManager) {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             final int[] firstVisibleItemPositions = ((StaggeredGridLayoutManager) layoutManager).findFirstCompletelyVisibleItemPositions(null);
             return determineVisibleStaggeredItemPosition(firstVisibleItemPositions, true);
 =======
             final int[] lastVisibleItemPositions = ((StaggeredGridLayoutManager) layoutManager).findFirstCompletelyVisibleItemPositions(null);
             return determineVisibleStaggeredItemPosition(lastVisibleItemPositions, true);
+>>>>>>> Stashed changes
+=======
+            final int[] firstVisibleItemPositions = ((StaggeredGridLayoutManager) layoutManager).findFirstCompletelyVisibleItemPositions(null);
+            return determineVisibleStaggeredItemPosition(firstVisibleItemPositions, true);
 >>>>>>> Stashed changes
 
         } else if (layoutManager instanceof GridLayoutManager) {
