@@ -337,6 +337,7 @@ public final class FastScroller extends LinearLayout {
     }
 
     /**
+<<<<<<< Updated upstream
      * <p>Set a new indexing method for calculating the position of the item to obtain the selection text from.</p>
      *
      * <p>Must be one of the indexing methods defined by the {@link IndexingMethod} Annotation interface.</p>
@@ -344,6 +345,13 @@ public final class FastScroller extends LinearLayout {
      * @param method the id of the indexing method to use
      */
     public void setIndexingMethod(@IndexingMethod int method) {
+=======
+     * TODO
+     *
+     * @param method
+     */
+    public void setIndexingMethod(int method) {
+>>>>>>> Stashed changes
         mIndexingMethod = method;
     }
 
@@ -431,6 +439,7 @@ public final class FastScroller extends LinearLayout {
         if (mRecyclerView != null && mRecyclerView.getAdapter() != null) {
             final int itemCount = mRecyclerView.getAdapter().getItemCount();
             final float proportion = calculateProportion(y);
+<<<<<<< Updated upstream
             final int scrolledItemCount = calculateScrolledItemCount(itemCount, proportion);
             final int targetPosition = getValueInRange(0, itemCount - 1, scrolledItemCount);
 
@@ -447,6 +456,47 @@ public final class FastScroller extends LinearLayout {
                 }
                 mBubbleView.setText(mSectionIndexer.getSectionText(indexPosition));
             }
+        }
+    }
+
+    private float calculateProportion(float y) {
+        if (mHandleView.getY() == 0) {
+            return 0f;
+        } else if (mHandleView.getY() + mHandleHeight >= mViewHeight - sTrackSnapRange) {
+            return 1f;
+        } else {
+            return y / (float) mViewHeight;
+        }
+    }
+=======
+
+            final int targetPos;
+
+            if (mIndexingMethod == IndexingMethod.PROPORTIONAL) {
+                final int scrolledItemCount = calculateScrolledItemCount(itemCount, proportion);
+
+                targetPos = getValueInRange(0, itemCount - 1, scrolledItemCount);
+
+                mRecyclerView.getLayoutManager().scrollToPosition(targetPos);
+            } else {
+                final int verticalScrollRange = mRecyclerView.computeVerticalScrollRange();
+
+                if (mIndexingMethod == IndexingMethod.FIRST_VISIBLE_ITEM) {
+                    targetPos = obtainFirstVisibleItemPosition(mRecyclerView.getLayoutManager());
+                } else {
+                    targetPos = obtainLastVisibleItemPosition(mRecyclerView.getLayoutManager());
+                }
+
+                mRecyclerView.getLayoutManager().s(0, Math.round(verticalScrollRange * proportion));
+            }
+
+>>>>>>> Stashed changes
+
+    private int calculateScrolledItemCount(int totalItemCount, float proportion) {
+        if (isLayoutReversed(mRecyclerView.getLayoutManager())) {
+            return totalItemCount - Math.round(proportion * totalItemCount);
+        } else {
+            return Math.round(proportion * totalItemCount);
         }
     }
 
@@ -600,8 +650,13 @@ public final class FastScroller extends LinearLayout {
     @IntRange(from = 0)
     private int obtainFirstVisibleItemPosition(@NonNull final RecyclerView.LayoutManager layoutManager) {
         if (layoutManager instanceof StaggeredGridLayoutManager) {
+<<<<<<< Updated upstream
             final int[] firstVisibleItemPositions = ((StaggeredGridLayoutManager) layoutManager).findFirstCompletelyVisibleItemPositions(null);
             return determineVisibleStaggeredItemPosition(firstVisibleItemPositions, true);
+=======
+            final int[] lastVisibleItemPositions = ((StaggeredGridLayoutManager) layoutManager).findFirstCompletelyVisibleItemPositions(null);
+            return determineVisibleStaggeredItemPosition(lastVisibleItemPositions, true);
+>>>>>>> Stashed changes
 
         } else if (layoutManager instanceof GridLayoutManager) {
             return ((GridLayoutManager) layoutManager).findFirstCompletelyVisibleItemPosition();
